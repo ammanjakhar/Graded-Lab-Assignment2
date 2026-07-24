@@ -1,0 +1,120 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/types.h>
+
+struct Employee
+{
+    int id;
+    char name[50];
+    float salary;
+};
+
+int main()
+{
+    int fd;
+    ssize_t bytes;
+    struct Employee employees[3] = {
+        {101, "Aman", 35000.0},
+        {102, "Rahul", 40000.0},
+        {103, "Priya", 45000.0}
+    };
+
+    struct Employee emp;
+
+    /* Step 1: Create/Open the employee file */
+    fd = open("employees.dat",
+              O_CREAT | O_RDWR | O_TRUNC,
+              0600);
+
+    if (fd == -1)
+    {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Step 2: Write employee records */
+    bytes = write(fd, employees, sizeof(employees));
+
+    if (bytes != sizeof(employees))
+    {
+        perror("write");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Employee records written successfully.\n");
+
+    /*
+     * Step 3: Update employee record 2 directly.
+     * Record 2 starts at offset 1 * sizeof(Employee).
+     */
+    off_t offset = 1 * sizeof(struct Employee);
+
+    if (lseek(fd, offset, SEEK_SET) == -1)
+    {
+        perror("lseek");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    struct Employee updated = {
+        102,
+        "Rahul",
+        50000.0
+    };
+
+    bytes = write(fd, &updated, sizeof(updated));
+
+    if (bytes != sizeof(updated))
+    {
+        perror("write");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Employee record 2 updated successfully.\n");
+
+    /*
+     * Step 4: Retrieve record 3 directly.
+     * Record 3 starts at offset 2 * sizeof(Employee).
+     */
+    offset = 2 * sizeof(struct Employee);
+
+    if (lseek(fd, offset, SEEK_SET) == -1)
+    {
+        perror("lseek");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    bytes = read(fd, &emp, sizeof(emp));
+
+    if (bytes == -1)
+    {
+        perror("read");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    if (bytes == sizeof(emp))
+    {
+        printf("\nRetrieved Employee Record:\n");
+        printf("ID     : %d\n", emp.id);
+        printf("Name   : %s\n", emp.name);
+        printf("Salary : %.2f\n", emp.salary);
+    }
+
+    /* Step 5: Close the file */
+    if (close(fd) == -1)
+    {
+        perror("close");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("\nFile closed successfully.\n");
+
+    return 0;
+}
